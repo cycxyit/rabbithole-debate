@@ -31,9 +31,9 @@ export class OpenAIService {
         this.clients = new Map();
         this.modelConfigs = {
             gemini: {
-                baseURL: "https://generativelanguage.googleapis.com/v1beta",
+                baseURL: "https://api.siliconflow.com/v1",
                 apiKey: googleApiKey,
-                model: "gemini-2.0-flash",
+                model: "deepseek-ai/DeepSeek-V3.2",
             }
         };
     }
