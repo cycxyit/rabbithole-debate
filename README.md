@@ -1,295 +1,390 @@
-# 🐰 Open Source RabbitHole - Knowledge Explorer
+# 🐰 RabbitHoles — 开源知识探索工具
+> 通过 AI 驱动的交互式思维导图，深入探索任何知识领域，发现意想不到的关联。
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/)
+---
 
-## 🚀 Quick Deploy
+## 📖 目录
 
-### Railway Deployment
+- [项目简介](#项目简介)
+- [功能特性](#功能特性)
+- [技术栈](#技术栈)
+- [获取 API Key](#获取-api-key)
+- [本地开发部署](#本地开发部署)
+- [Docker 部署](#docker-部署)
+- [Railway 一键部署](#railway-一键部署)
+- [环境变量说明](#环境变量说明)
+- [项目结构](#项目结构)
+- [JSON 导入/导出](#json-导入导出)
+- [常见问题](#常见问题)
+- [贡献指南](#贡献指南)
 
-1. Click the "Deploy on Railway" button above
-2. Set up your environment variables in Railway:
-   ```
-   TAVILY_API_KEY=your_tavily_api_key
-   GOOGLE_AI_API_KEY=your_google_ai_api_key
-   ```
-3. Railway will automatically detect the Dockerfile and deploy your application
+---
 
-## 🛠️ Local Development
+## 项目简介
 
-### Prerequisites
-- Node.js 18 or higher
-- npm or yarn
-- Docker (optional)
+RabbitHoles 是一款开源的知识探索工具，灵感来自同名应用。它结合了 **Tavily** 实时搜索和 **Google Gemini** 大语言模型，将你的提问转化为可交互的知识图谱，帮助你沿着知识的"兔子洞"不断深挖，发现主题之间的隐藏联系。
 
-### Setup
+---
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/rabbitholes.git
-cd rabbitholes
-```
+## 功能特性
 
-2. Install dependencies:
-```bash
-npm install
-```
+- 🗺️ **交互式思维导图** — 基于 React Flow 的可视化知识网络
+- 🤖 **AI 内容生成** — 由 Google Gemini 提供深度内容与追问建议
+- 🔍 **实时网络搜索** — Tavily 搜索引擎提供最新资料与来源引用
+- 🌿 **自定义分支** — 在搜索前预置自定义问题分支
+- 💬 **追问功能** — 对任意主内容卡发起后续追问
+- 📥 **JSON 导入/导出** — 保存与恢复探索会话（详见下方说明）
+- 🌙 **暗色主题** — 精美的深色 UI 设计
 
-3. Create environment files:
+---
 
-For backend (backend/.env):
-```env
-PORT=3000
-TAVILY_API_KEY=your_tavily_api_key
-GOOGLE_AI_API_KEY=your_google_ai_api_key
-```
+## 技术栈
 
-For frontend (frontend/.env.development):
-```env
-REACT_APP_API_URL=http://localhost:3000/api
-```
+### 前端
+| 技术 | 用途 |
+|---|---|
+| React + TypeScript | UI 框架 |
+| React Flow | 知识图谱可视化 |
+| Tailwind CSS | 样式 |
+| Dagre | 图布局算法 |
+| GSAP | 动画效果 |
 
-4. Start development servers:
-```bash
-# Start both frontend and backend in development mode
-npm run dev
+### 后端
+| 技术 | 用途 |
+|---|---|
+| Node.js + Express | Web 服务器 |
+| TypeScript | 类型安全 |
+| Tavily API | 网络搜索 |
+| Google Gemini API | 大语言模型 |
 
-# Or start them separately
-npm run frontend:dev
-npm run backend:dev
-```
+---
 
-## 🐳 Docker Development
+## 获取 API Key
 
-1. Build the Docker image:
-```bash
-docker build -t rabbitholes .
-```
+在部署前，你需要准备两个 API Key：
 
-2. Run the container:
-```bash
-docker run -p 3000:3000 \
-  -e TAVILY_API_KEY=your_tavily_api_key \
-  -e GOOGLE_AI_API_KEY=your_google_ai_api_key \
-  rabbitholes
-```
+### 1. Tavily API Key（搜索服务）
 
-Or using docker-compose:
+1. 访问 [https://tavily.com](https://tavily.com)
+2. 注册账号（支持 Google 登录）
+3. 进入控制台 → **API Keys** → 点击 **Generate API Key**
+4. 复制以 `tvly-` 开头的 Key
 
-```bash
-docker-compose up
-```
+> 💡 Tavily 提供每月 **1,000 次免费搜索**，个人使用完全够用。
 
-## 📦 Project Structure
+### 2. Google AI API Key（Gemini 模型）
 
-```
-rabbitholes/
-├── frontend/              # React frontend
-│   ├── src/
-│   ├── public/
-│   └── package.json
-├── backend/              # Express backend
-│   ├── src/
-│   └── package.json
-├── Dockerfile           # Production Dockerfile
-├── docker-compose.yml   # Docker compose configuration
-└── package.json        # Root package.json for workspace
-```
+1. 访问 [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+2. 使用 Google 账号登录
+3. 点击 **Create API key** → 选择或新建 Google Cloud 项目
+4. 复制生成的 API Key
 
-## 🔑 Environment Variables
+> 💡 Google AI Studio 提供 **免费配额**（gemini-1.5-flash 每分钟 15 次请求，每天 1500 次），个人探索使用完全免费。
 
-### Backend Variables
-- `PORT` - Server port (default: 3000)
-- `TAVILY_API_KEY` - Your Tavily API key
-- `GOOGLE_AI_API_KEY` - Your Google AI API key
+---
 
-### Frontend Variables
-- `REACT_APP_API_URL` - Backend API URL
-  - Development: http://localhost:3000/api
-  - Production: /api
+## 本地开发部署
 
-## 📝 License
+适合想要在本机运行或二次开发的用户。
 
-MIT
+### 前置要求
 
-# Open RabbitHoles 🐰
+- **Node.js 18+** — [下载地址](https://nodejs.org/)
+- **npm** 或 **yarn**
+- Git
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/sheing)
+### 第一步：克隆项目
 
-Introducing Open RabbitHoles - an open source implementation inspired by the original RabbitHoles app, but with our own twist. Dive deep into the rabbit holes without the premium price tag. This tool helps you dive deep into any topics, discover unexpected connections, and visualize your research journey in an interactive mind map.
-
-Built with React, Node.js, and powered by a combination of Tavily and Google AI, this implementation offers a unique approach to mind map style exploration and knowledge mapping.
-
-## Screenshots 📸
-
-![Main Interface](screenshots/main-interface.png)
-*The main interface showing the "SEEK KNOWLEDGE" header and search functionality*
-
-![Consciousness Exploration](screenshots/consciousness-map.png)
-*An example exploration map showing topics around cosmic consciousness, panpsychism, and quantum entanglement*
-
-![Da Vinci Mysteries](screenshots/davinci-mysteries.png)
-*Exploring connections between Da Vinci's work and scientific mysteries*
-
-## Why Open RabbitHoles? 🤔
-
-- 🆓 Free and open source alternative to premium research tools
-- 🔄 Unique implementation combining multiple AI providers for better results
-- 🎯 Custom-built visualization algorithms for knowledge mapping
-- 🚀 Enhanced with Tavily's search capabilities
-- 💡 Powered by Google Gemini for deeper insights
-
-## Features 🚀
-
-- Interactive mind-map style exploration
-- AI-powered content generation and connections
-- Beautiful, fluid UI with React Flow
-- Real-time topic exploration and visualization
-- Seamless backend integration with OpenAI
-
-## Tech Stack 💻
-
-### Frontend
-- React
-- TypeScript
-- React Flow
-- Tailwind CSS
-- Dagre (for graph layouts)
-
-### Backend
-- Node.js
-- Express
-- TypeScript
-- OpenAI API integration
-
-## Architecture 🏗️
-Potential production architecture for the project.
-
-```mermaid
-graph TD
-    subgraph "Frontend Layer"
-        UI[React UI]
-        RF[React Flow Visualization]
-        Store[State Management]
-        UI --> RF
-        UI <--> Store
-        RF <--> Store
-    end
-
-    subgraph "Backend Core"
-        direction TB
-        API[Express API Gateway]
-        Router[Dynamic Route Handler]
-        Cache[In-Memory Response Cache]
-        QP[Query Processor]
-        CO[Conversation Orchestrator]
-        
-        API --> Router
-        Router --> QP
-        QP <--> Cache
-        QP --> CO
-    end
-
-    subgraph "AI Service Layer"
-        direction TB
-        TO[Topic Orchestrator]
-        subgraph "Search Services"
-            TS[Tavily Search Engine]
-            TC[Topic Contextualizer]
-        end
-        
-        subgraph "AI Processing"
-            GE[Gemini Engine]
-            PP[Prompt Processor]
-            KM[Knowledge Mapper]
-        end
-    end
-
-    subgraph "Data Flow"
-        Store <--> API
-        Router <--> TO
-        TO <--> TS
-        TO <--> TC
-        CO <--> PP
-        PP <--> GE
-        GE <--> KM
-        KM --> TC
-    end
-
-    style Frontend Layer fill:#e1f5fe,stroke:#01579b
-    style Backend Core fill:#e8f5e9,stroke:#2e7d32
-    style AI Service Layer fill:#fce4ec,stroke:#c2185b
-    style Data Flow fill:#fff3e0,stroke:#ef6c00
-```
-
-## Getting Started 🌟
-
-### Prerequisites
-- Node.js (v14 or higher)
-- npm or yarn
-- OpenAI API key
-
-### Installation
-
-1. Clone the repository
 ```bash
 git clone https://github.com/AsyncFuncAI/rabbitholes.git
 cd rabbitholes
 ```
 
-2. Install dependencies
+### 第二步：安装依赖
+
 ```bash
-# Install root dependencies
+# 在项目根目录执行（会同时安装 frontend 和 backend 的依赖）
 npm install
 
-# Install frontend dependencies
-cd frontend
-npm install
-
-# Install backend dependencies
-cd ../backend
-npm install
+# 如果根目录 install 不包含子目录，也可以分别安装：
+cd frontend && npm install && cd ..
+cd backend && npm install && cd ..
 ```
 
-3. Set up environment variables
+### 第三步：配置环境变量
+
+在 `backend/` 目录下创建 `.env` 文件：
+
 ```bash
-# In backend/.env
-PORT=3000
-TAVILY_API_KEY= your_tavily_api_key
-GOOGLE_AI_API_KEY= your_google_api_key
+# backend/.env
+PORT=3001
+TAVILY_API_KEY=tvly-你的密钥
+GOOGLE_AI_API_KEY=你的Gemini密钥
 ```
 
-4. Start the development servers
+> ⚠️ **注意**：`.env` 文件已被 `.gitignore` 排除，不会被提交到 Git，请妥善保管密钥。
+
+### 第四步：启动开发服务器
+
+**方式一：同时启动前后端（推荐）**
+
 ```bash
-# Start backend (from backend directory)
+# 在项目根目录执行
 npm run dev
-
-# Start frontend (from frontend directory)
-npm start
 ```
 
-## Usage 🎯
-1. Open your browser and navigate to `http://localhost:3001`
-2. Enter a topic you want to explore in the search bar
-3. Watch as the AI generates connections and builds your exploration map
-4. Click on nodes to dive deeper into subtopics
-5. Save and share your exploration paths
+**方式二：分别启动**
 
-## Contributing 🤝
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+# 终端 1 — 启动后端（端口 3001）
+npm run backend:dev
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+# 终端 2 — 启动前端（端口 5173 或 3000）
+npm run frontend:dev
+```
 
-## License 📝
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### 第五步：访问应用
 
-## Credits 🙏
+打开浏览器，访问：
 
-This project is powered by [Dojoma AI](https://dojoma.ai). Special thanks to team from Dojoma AI for contributing to this project.
+```
+http://localhost:5173
+```
 
+> 后端 API 运行在 `http://localhost:3001`，前端会自动代理请求。
 
 ---
-Built with ❤️ + 🇺🇸
+
+## Docker 部署
+
+适合在服务器上快速运行，无需配置 Node.js 环境。
+
+### 前置要求
+
+- **Docker** — [下载地址](https://www.docker.com/get-started)
+- **Docker Compose**（Docker Desktop 已内置）
+
+### 方式一：docker-compose（推荐）
+
+1. 在项目根目录（与 `docker-compose.yml` 同级）创建 `.env` 文件：
+
+```bash
+# .env（放在 rabbitholes/ 根目录）
+TAVILY_API_KEY=tvly-你的密钥
+GOOGLE_AI_API_KEY=你的Gemini密钥
+```
+
+2. 启动容器：
+
+```bash
+docker-compose up -d
+```
+
+3. 访问应用：`http://localhost:3000`
+
+4. 查看日志：
+
+```bash
+docker-compose logs -f
+```
+
+5. 停止服务：
+
+```bash
+docker-compose down
+```
+
+### 方式二：手动构建镜像
+
+```bash
+# 构建镜像
+docker build -t rabbitholes .
+
+# 运行容器（替换为你的密钥）
+docker run -d \
+  -p 3000:3000 \
+  -e TAVILY_API_KEY=tvly-你的密钥 \
+  -e GOOGLE_AI_API_KEY=你的Gemini密钥 \
+  --name rabbitholes \
+  rabbitholes
+```
+
+访问 `http://localhost:3000`
+
+---
+
+## Railway 一键部署
+
+适合想要快速上线公网访问的用户，Railway 提供免费试用额度。
+
+### 步骤
+
+1. 点击顶部的 **Deploy on Railway** 按钮
+2. 使用 GitHub 账号登录 Railway
+3. Fork 这个仓库（Railway 需要访问你的 GitHub）
+4. 在 Railway 项目设置中添加环境变量：
+
+   | 变量名 | 值 |
+   |---|---|
+   | `TAVILY_API_KEY` | tvly-你的密钥 |
+   | `GOOGLE_AI_API_KEY` | 你的Gemini密钥 |
+
+5. Railway 会自动检测 `Dockerfile` 并开始构建，约 2-5 分钟后部署完成
+6. 在 Railway 控制台获取你的公网访问域名
+
+---
+
+## 环境变量说明
+
+### 后端变量（`backend/.env`）
+
+| 变量名 | 必填 | 默认值 | 说明 |
+|---|---|---|---|
+| `PORT` | 否 | `3001` | 后端监听端口 |
+| `TAVILY_API_KEY` | **是** | — | Tavily 搜索 API Key |
+| `GOOGLE_AI_API_KEY` | **是** | — | Google Gemini API Key |
+
+### 前端变量（开发时可选）
+
+| 变量名 | 默认值 | 说明 |
+|---|---|---|
+| `REACT_APP_API_URL` | `/api` | 后端 API 地址（生产环境走同域代理） |
+
+> 本地开发时前端默认请求 `http://localhost:3001/api`，通过 Vite 代理自动转发。
+
+---
+
+## 项目结构
+
+```
+rabbitholes/
+├── frontend/                      # React 前端应用
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── SearchView.tsx     # 主页面（搜索 + 画布）
+│   │   │   ├── RabbitFlow.tsx     # React Flow 画布组件
+│   │   │   ├── CustomBranchInput.tsx  # 自定义分支输入
+│   │   │   └── nodes/
+│   │   │       └── MainNode.tsx   # 主内容卡节点
+│   │   ├── services/
+│   │   │   └── api.ts             # API 请求封装
+│   │   └── styles/
+│   └── package.json
+│
+├── backend/                       # Express 后端服务
+│   ├── src/
+│   │   ├── server.ts              # 服务器入口
+│   │   ├── routes/
+│   │   │   └── rabbithole.ts      # 核心 API 路由
+│   │   └── services/
+│   │       └── openaiService.ts   # AI 服务调用
+│   ├── .env                       # 环境变量（自行创建）
+│   └── package.json
+│
+├── rabbitholes-main-template.json  # JSON 模板：完整主内容卡
+├── rabbitholes-branch-template.json # JSON 模板：分支问题预置
+│
+├── Dockerfile                     # 生产镜像构建文件
+├── docker-compose.yml             # Docker Compose 配置
+├── railway.toml                   # Railway 部署配置
+└── package.json                   # 根工作区配置
+```
+
+---
+
+## JSON 导入/导出
+
+应用支持将整个探索会话保存为 JSON 文件，并在之后重新导入恢复。
+
+### 导出
+
+在画布界面左上角点击 **「导出 JSON」** 按钮，浏览器将自动下载一个 `.json` 文件，包含当前所有节点、边、问题和对话历史。
+
+### 导入（完整会话）
+
+1. 点击左上角 **「导入 JSON」** 按钮（在搜索首页或画布页均可操作）
+2. 选择之前导出的 `.json` 文件
+3. 画布将自动恢复到导出时的状态
+
+### 导入（仅分支模板）
+
+项目根目录提供了 `rabbitholes-branch-template.json` 文件，可以在搜索**之前**导入，预置自定义分支问题。在搜索首页点击 **「导入 JSON」** 并选择该文件，分支问题标签将自动填充。
+
+---
+
+## 常见问题
+
+**Q: 启动后访问页面一直 loading？**
+> 检查 `backend/.env` 中的 API Key 是否正确配置，打开浏览器开发者工具 Network 面板查看报错信息。
+
+**Q: 报错 `TAVILY_API_KEY is not defined`？**
+> 确保在 `backend/` 目录下创建了 `.env` 文件，且文件中没有多余的空格（`KEY= value` 应改为 `KEY=value`）。
+
+**Q: 前端启动后提示 `Cannot find module`？**
+> 分别在 `frontend/` 和 `backend/` 目录各执行一次 `npm install`。
+
+**Q: Docker 构建失败？**
+> 确保 Docker 守护进程已启动，并且网络可以访问 npm 镜像源。国内用户可以在 Dockerfile 中配置 npm 镜像。
+
+**Q: Railway 部署后前端无法访问 API？**
+> Railway 会将前后端合并为单个服务，前端请求会通过同域 `/api` 路径转发，无需额外配置。
+
+---
+
+## 系统架构
+
+```mermaid
+graph TD
+    subgraph "前端层"
+        UI[React UI]
+        RF[React Flow 可视化]
+        Store[状态管理]
+        UI --> RF
+        UI <--> Store
+        RF <--> Store
+    end
+
+    subgraph "后端核心"
+        API[Express API 网关]
+        Router[路由处理器]
+        QP[查询处理器]
+        CO[对话编排器]
+        API --> Router
+        Router --> QP
+        QP --> CO
+    end
+
+    subgraph "AI 服务层"
+        TS[Tavily 搜索]
+        GE[Gemini 引擎]
+        PP[提示词处理器]
+    end
+
+    Store <--> API
+    Router <--> TS
+    CO <--> PP
+    PP <--> GE
+```
+
+---
+
+## 贡献指南
+
+欢迎提交 Pull Request！
+
+1. Fork 本仓库
+2. 创建功能分支：`git checkout -b feature/新功能名称`
+3. 提交更改：`git commit -m 'feat: 添加某某功能'`
+4. 推送分支：`git push origin feature/新功能名称`
+5. 发起 Pull Request
+
+---
+
+## 许可证
+
+本项目基于 [MIT License](LICENSE) 开源。
+原项目: https://github.com/AsyncFuncAI/rabbitholes
+
+---
+
+Built with ❤️ | Powered by [Tavily](https://tavily.com) & [Google Gemini](https://aistudio.google.com)
