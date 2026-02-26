@@ -13,6 +13,7 @@ interface MainNodeData {
     url: string;
     thumbnail?: string;
   }>;
+  onAskFollowUp?: () => void;
 }
 
 const getFaviconUrl = (url: string): string => {
@@ -50,7 +51,7 @@ const MainNode = ({ data }: NodeProps<MainNodeData>) => {
           />
         </div>
       )}
-      
+
       <div className={`flex-1 overflow-y-auto custom-scrollbar bg-[#1a1a1a] flex items-start justify-center`}>
         {data.content === 'Loading...' ? (
           <div className="flex flex-col items-center justify-center space-y-8 p-6">
@@ -68,7 +69,7 @@ const MainNode = ({ data }: NodeProps<MainNodeData>) => {
                 <div className="w-2 h-2 bg-white/80 rounded-full animate-pulse"></div>
               </div>
             </div>
-            
+
             <div className="space-y-3 text-center">
               <div className="font-mystical text-lg text-white/70 tracking-[0.2em] animate-pulse">
                 SEEKING WISDOM
@@ -116,6 +117,20 @@ const MainNode = ({ data }: NodeProps<MainNodeData>) => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        {/* Ask Follow Up button */}
+        {data.onAskFollowUp && data.content !== 'Loading...' && (
+          <div className="flex-none border-t border-white/5 px-6 py-3">
+            <button
+              onClick={(e) => { e.stopPropagation(); data.onAskFollowUp!(); }}
+              className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition-colors duration-200 group"
+            >
+              <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+              </svg>
+              Ask Follow Up
+            </button>
           </div>
         )}
       </div>

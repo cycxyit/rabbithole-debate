@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import ReactFlow, { Node, Edge, MarkerType, Position } from 'reactflow';
@@ -87,9 +87,7 @@ interface ConversationMessage {
   assistant?: string;
 }
 
-const nodeTypes = {
-  mainNode: MainNode,
-};
+
 
 const useDeckHoverAnimation = (deckRef: React.RefObject<HTMLDivElement>) => {
   useEffect(() => {
@@ -254,6 +252,27 @@ const SearchView: React.FC = () => {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [followUpInput, setFollowUpInput] = useState('');
   const [selectedSourceNodeId, setSelectedSourceNodeId] = useState<string>('');
+
+  // Stable ref holding the modal-open callback so nodeTypes useMemo never re-creates
+  const onAskFollowUpRef = useRef<(nodeId: string) => void>(() => { });
+  onAskFollowUpRef.current = (nodeId: string) => {
+    setSelectedSourceNodeId(nodeId);
+    setFollowUpInput('');
+    setShowFollowUpModal(true);
+  };
+
+  // nodeTypes is memoized once; MainNode receives a stable wrapper that reads the latest ref
+  const nodeTypes = useMemo(() => ({
+    mainNode: (props: React.ComponentProps<typeof MainNode>) => (
+      <MainNode
+        {...props}
+        data={{
+          ...props.data,
+          onAskFollowUp: () => onAskFollowUpRef.current(props.id)
+        }}
+      />
+    )
+  }), []);
   const activeRequestRef = useRef<{ [key: string]: AbortController | null }>({});
   // Refs to always hold the latest state values, avoiding stale closures
   const edgesRef = useRef<Edge[]>([]);
@@ -815,25 +834,6 @@ const SearchView: React.FC = () => {
         onNodeClick={handleNodeClick}
       />
 
-      {/* Floating Ask Follow Up button */}
-      <button
-        onClick={() => {
-          const lastId = nodesRef.current
-            .filter(n => n.type === 'mainNode' && n.data.isExpanded)
-            .at(-1)?.id ?? nodesRef.current[0]?.id ?? 'main';
-          setSelectedSourceNodeId(lastId);
-          setFollowUpInput('');
-          setShowFollowUpModal(true);
-        }}
-        disabled={isLoading}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111111] border border-white/20 text-white/80 text-sm font-light tracking-wide hover:border-white/40 hover:text-white hover:bg-[#1a1a1a] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-black/40 backdrop-blur-sm"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-        </svg>
-        Ask Follow Up
-      </button>
-
       {/* Modal overlay */}
       {showFollowUpModal && (
         <div
@@ -858,8 +858,8 @@ const SearchView: React.FC = () => {
                         key={n.id}
                         onClick={() => setSelectedSourceNodeId(n.id)}
                         className={`px-3 py-1.5 rounded-full text-xs font-light transition-all duration-150 border truncate max-w-[180px] ${selectedSourceNodeId === n.id
-                            ? 'bg-white/15 border-white/40 text-white'
-                            : 'bg-transparent border-white/15 text-white/50 hover:border-white/30 hover:text-white/70'
+                          ? 'bg-white/15 border-white/40 text-white'
+                          : 'bg-transparent border-white/15 text-white/50 hover:border-white/30 hover:text-white/70'
                           }`}
                         title={n.data.label}
                       >
