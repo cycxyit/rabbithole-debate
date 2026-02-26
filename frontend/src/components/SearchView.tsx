@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import ReactFlow, { Node, Edge, MarkerType, Position } from 'reactflow';
@@ -9,6 +9,7 @@ import MainNode from './nodes/MainNode';
 import CustomBranchInput from './CustomBranchInput';
 import '../styles/search.css';
 import { searchRabbitHole } from '../services/api';
+
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -87,7 +88,17 @@ interface ConversationMessage {
   assistant?: string;
 }
 
-
+// ─── JSON Import/Export types ───────────────────────────────────────────────
+interface RabbitHoleExport {
+  version: string;
+  type?: string;
+  query?: string;
+  currentConcept?: string;
+  conversationHistory?: ConversationMessage[];
+  nodes?: Node[];
+  edges?: Edge[];
+  branchQuestions?: string[];
+}
 
 const useDeckHoverAnimation = (deckRef: React.RefObject<HTMLDivElement>) => {
   useEffect(() => {
@@ -252,6 +263,8 @@ const SearchView: React.FC = () => {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [followUpInput, setFollowUpInput] = useState('');
   const [selectedSourceNodeId, setSelectedSourceNodeId] = useState<string>('');
+  const [importToast, setImportToast] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Stable ref holding the modal-open callback so nodeTypes useMemo never re-creates
   const onAskFollowUpRef = useRef<(nodeId: string) => void>(() => { });
@@ -366,6 +379,79 @@ const SearchView: React.FC = () => {
   useDeckHoverAnimation(thothDeckRef);
   useDeckHoverAnimation(anubisDeckRef);
   useDeckHoverAnimation(isisDeckRef);
+
+  // ─── JSON Export ────────────────────────────────────────────────────────────
+  const handleExportJSON = useCallback(() => {
+    const payload: RabbitHoleExport = {
+      version: '1.0',
+      query,
+      currentConcept,
+      conversationHistory,
+      nodes: nodesRef.current,
+      edges: edgesRef.current,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = (query || 'rabbitholes').replace(/[^a-z0-9\u4e00-\u9fa5]+/gi, '_').slice(0, 40);
+    a.download = `rabbitholes_${safeName}_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [query, currentConcept, conversationHistory]);
+
+  // ─── JSON Import ─────────────────────────────────────────────────────────────
+  const showToast = useCallback((msg: string) => {
+    setImportToast(msg);
+    setTimeout(() => setImportToast(null), 3000);
+  }, []);
+
+  const handleImportJSON = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data: RabbitHoleExport = JSON.parse(evt.target?.result as string);
+
+        if (data.type === 'branch-only' && Array.isArray(data.branchQuestions)) {
+          setCustomBranchQuestions(data.branchQuestions);
+          showToast(`✓ 已导入 ${data.branchQuestions.length} 个分支问题`);
+          return;
+        }
+
+        if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+          showToast('✗ 无效的 JSON 格式：缺少 nodes 或 edges');
+          return;
+        }
+
+        if (data.query) setQuery(data.query);
+        if (data.currentConcept) setCurrentConcept(data.currentConcept);
+        if (data.conversationHistory) setConversationHistory(data.conversationHistory);
+
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(data.nodes, data.edges);
+        nodesRef.current = layoutedNodes;
+        edgesRef.current = layoutedEdges;
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
+
+        setSearchResult({
+          response: '',
+          followUpQuestions: [],
+          sources: [],
+          images: [],
+          contextualQuery: data.query || '',
+        } as SearchResponse);
+
+        showToast(`✓ 导入成功：${layoutedNodes.length} 个节点`);
+      } catch {
+        showToast('✗ JSON 解析失败，请检查文件格式');
+      }
+    };
+    reader.readAsText(file);
+  }, [showToast]);
 
   useEffect(() => {
     return () => {
@@ -674,6 +760,50 @@ const SearchView: React.FC = () => {
     }
   };
 
+  // ─── Toolbar JSX (Import always visible; Export only in flow view) ───────
+  const renderIOToolbar = (showExport: boolean) => (
+    <div className="fixed top-6 left-6 z-50 flex items-center gap-2">
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        title="导入 JSON"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111111] border border-white/10 text-white/50 hover:text-white/90 hover:border-white/30 transition-all duration-200 text-xs font-light tracking-wide shadow-lg"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+        </svg>
+        导入 JSON
+      </button>
+
+      {showExport && (
+        <button
+          onClick={handleExportJSON}
+          title="导出 JSON"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111111] border border-white/10 text-white/50 hover:text-white/90 hover:border-white/30 transition-all duration-200 text-xs font-light tracking-wide shadow-lg"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 8l5-5 5 5M12 3v12" />
+          </svg>
+          导出 JSON
+        </button>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleImportJSON}
+      />
+    </div>
+  );
+
+  // ─── Toast notification ───────────────────────────────────────────────────
+  const toastEl = importToast ? (
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] px-5 py-2.5 rounded-full bg-[#1a1a1a] border border-white/15 text-white/80 text-sm font-light shadow-2xl transition-all duration-300">
+      {importToast}
+    </div>
+  ) : null;
+
   if (!searchResult) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#0A0A0A]">
@@ -821,12 +951,16 @@ const SearchView: React.FC = () => {
             VENTURE INTO THE UNKNOWN
           </div>
         </div>
+        {renderIOToolbar(false)}
+        {toastEl}
       </div>
     );
   }
 
   return (
     <div className="relative min-h-screen bg-background">
+      {renderIOToolbar(true)}
+      {toastEl}
       <RabbitFlow
         initialNodes={nodes}
         initialEdges={edges}
