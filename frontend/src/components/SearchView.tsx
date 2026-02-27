@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import ReactMarkdown from 'react-markdown';
-import axios from 'axios';
-import ReactFlow, { Node, Edge, MarkerType, Position } from 'reactflow';
+import { Node, Edge, MarkerType, Position } from 'reactflow';
 import dagre from 'dagre';
-import gsap from 'gsap';
 import RabbitFlow from './RabbitFlow';
 import MainNode from './nodes/MainNode';
 import QuestionNode from './nodes/QuestionNode';
 import CustomBranchInput from './CustomBranchInput';
+import AuthModal from './AuthModal';
 import '../styles/search.css';
 import { searchRabbitHole } from '../services/api';
 import Sidebar from './Sidebar';
+import { useAuth } from '../contexts/AuthContext';
 import { getHistorySessions, saveHistorySession, deleteHistorySession, renameHistorySession, HistorySession, RabbitHoleExport, ConversationMessage } from '../services/history';
 
 const dagreGraph = new dagre.graphlib.Graph();
@@ -32,7 +31,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
   });
 
   const allNodes = dagreGraph.nodes();
-  allNodes.forEach(node => dagreGraph.removeNode(node));
+  allNodes.forEach((node: string) => dagreGraph.removeNode(node));
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, {
@@ -87,158 +86,8 @@ interface SearchResponse {
 
 // ─── JSON Import/Export types are now in history.ts ────────────────────────
 
-const useDeckHoverAnimation = (deckRef: React.RefObject<HTMLDivElement>) => {
-  useEffect(() => {
-    if (!deckRef.current) return;
-
-    const deck = deckRef.current;
-    const symbol = deck.querySelector('svg');
-    const card = deck.querySelector('.card-content');
-    let floatingAnimation: gsap.core.Timeline;
-
-    gsap.set(symbol, { scale: 1 });
-    gsap.set(card, {
-      y: 0,
-      rotate: 0,
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-    });
-
-    const createFloatingAnimation = () => {
-      const timeline = gsap.timeline({
-        repeat: -1,
-        yoyo: true,
-        defaults: { duration: 2, ease: "power1.inOut" }
-      });
-
-      const randomRotation = (Math.random() - 0.5) * 10;
-
-      timeline
-        .to(card, {
-          y: -15,
-          x: 5,
-          rotate: randomRotation,
-          boxShadow: '0 20px 30px -10px rgba(0, 0, 0, 0.3)',
-          duration: 2
-        })
-        .to(card, {
-          y: -10,
-          x: -5,
-          rotate: -randomRotation,
-          boxShadow: '0 15px 25px -8px rgba(0, 0, 0, 0.25)',
-          duration: 2
-        })
-        .to(card, {
-          y: -20,
-          x: 0,
-          rotate: 0,
-          boxShadow: '0 25px 35px -12px rgba(0, 0, 0, 0.35)',
-          duration: 2
-        });
-
-      timeline
-        .to(symbol, {
-          scale: 1.1,
-          rotate: 5,
-          duration: 3,
-          ease: "none"
-        }, 0)
-        .to(symbol, {
-          scale: 1.15,
-          rotate: -5,
-          duration: 3,
-          ease: "none"
-        }, 3);
-
-      return timeline;
-    };
-
-    const onHover = () => {
-      if (floatingAnimation) {
-        floatingAnimation.kill();
-      }
-
-      floatingAnimation = createFloatingAnimation();
-
-      gsap.to(card, {
-        boxShadow: '0 20px 30px -10px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.1)',
-        duration: 0.5
-      });
-
-      deck.classList.add('particles-active');
-    };
-
-    const onHoverOut = () => {
-      if (floatingAnimation) {
-        floatingAnimation.kill();
-      }
-
-      gsap.to(symbol, {
-        scale: 1,
-        rotate: 0,
-        duration: 0.5,
-        ease: 'power2.out'
-      });
-
-      gsap.to(card, {
-        y: 0,
-        x: 0,
-        rotate: 0,
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        duration: 0.5,
-        ease: 'power2.out',
-        clearProps: 'all' // Clear all applied properties
-      });
-
-      deck.classList.remove('particles-active');
-    };
-
-    deck.addEventListener('mouseenter', onHover);
-    deck.addEventListener('mouseleave', onHoverOut);
-
-    return () => {
-      if (floatingAnimation) {
-        floatingAnimation.kill();
-      }
-      deck.removeEventListener('mouseenter', onHover);
-      deck.removeEventListener('mouseleave', onHoverOut);
-    };
-  }, [deckRef]);
-};
-
-const DECK_QUESTIONS = {
-  thoth: [
-    "What secrets lie in the cosmic patterns of consciousness?",
-    "How do ancient symbols guide modern wisdom seekers?",
-    "What hidden knowledge flows through the akashic records?",
-    "How do celestial alignments influence human consciousness?",
-    "What mysteries of sacred geometry shape our reality?",
-    "How does divine wisdom manifest in everyday synchronicities?"
-  ],
-  anubis: [
-    "What lies beyond the veil between life and death?",
-    "How do souls navigate the journey through the afterlife?",
-    "What wisdom do ancestral spirits wish to share?",
-    "How does death illuminate the meaning of life?",
-    "What secrets lie in the ancient Egyptian Book of the Dead?",
-    "How do we bridge the gap between mortal and immortal realms?"
-  ],
-  isis: [
-    "How does ancient wisdom guide our modern understanding?",
-    "What forgotten knowledge lies in the temples of antiquity?",
-    "How do we unlock the mysteries of divine feminine power?",
-    "What sacred rituals can transform consciousness?",
-    "How do we balance material and spiritual existence?",
-    "What ancient healing practices remain relevant today?"
-  ]
-} as const;
-
-const getRandomQuestion = (category: keyof typeof DECK_QUESTIONS) => {
-  const questions = DECK_QUESTIONS[category];
-  const randomIndex = Math.floor(Math.random() * questions.length);
-  return questions[randomIndex];
-};
-
 const SearchView: React.FC = () => {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -257,10 +106,11 @@ const SearchView: React.FC = () => {
   const [sessions, setSessions] = useState<HistorySession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
-    setSessions(getHistorySessions());
-  }, []);
+    getHistorySessions().then(setSessions);
+  }, [user]);
 
   const onAskFollowUpRef = useRef<(nodeId: string) => void>(() => { });
   onAskFollowUpRef.current = (nodeId: string) => {
@@ -325,23 +175,6 @@ const SearchView: React.FC = () => {
   const edgesRef = useRef<Edge[]>([]);
   const nodesRef = useRef<Node[]>([]);
 
-  const thothDeckRef = useRef<HTMLDivElement>(null);
-  const anubisDeckRef = useRef<HTMLDivElement>(null);
-  const isisDeckRef = useRef<HTMLDivElement>(null);
-
-  const [deckQuestions, setDeckQuestions] = useState({
-    thoth: getRandomQuestion('thoth'),
-    anubis: getRandomQuestion('anubis'),
-    isis: getRandomQuestion('isis')
-  });
-
-  const refreshDeckQuestion = (category: keyof typeof DECK_QUESTIONS) => {
-    setDeckQuestions(prev => ({
-      ...prev,
-      [category]: getRandomQuestion(category)
-    }));
-  };
-
   const addCustomBranchQuestion = (question: string) => {
     setCustomBranchQuestions(prev => [...prev, question]);
   };
@@ -399,7 +232,7 @@ const SearchView: React.FC = () => {
     setShowFollowUpModal(false);
   };
 
-  const saveCurrentSession = useCallback(() => {
+  const saveCurrentSession = useCallback(async () => {
     if (!query && nodesRef.current.length === 0) return; // don't save empty
 
     const sessionId = currentSessionId || crypto.randomUUID();
@@ -414,8 +247,19 @@ const SearchView: React.FC = () => {
       edges: edgesRef.current,
       branchQuestions: customBranchQuestions
     };
-    saveHistorySession(newSession);
-    setSessions(getHistorySessions());
+
+    // Save to backend
+    await saveHistorySession(newSession);
+
+    // Immediately update local state without re-fetching
+    setSessions(prev => {
+      const exists = prev.some(s => s.id === newSession.id);
+      if (exists) {
+        return prev.map(s => s.id === newSession.id ? newSession : s);
+      }
+      return [newSession, ...prev].sort((a, b) => b.timestamp - a.timestamp);
+    });
+
     if (!currentSessionId) setCurrentSessionId(sessionId);
   }, [query, currentConcept, conversationHistory, customBranchQuestions, currentSessionId]);
 
@@ -476,18 +320,20 @@ const SearchView: React.FC = () => {
     }
   }, []);
 
-  const handleDeleteSession = useCallback((e: React.MouseEvent, id: string) => {
+  const handleDeleteSession = useCallback(async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    deleteHistorySession(id);
-    setSessions(getHistorySessions());
+    await deleteHistorySession(id);
+    const updatedSessions = await getHistorySessions();
+    setSessions(updatedSessions);
     if (currentSessionId === id) {
       handleNewSession();
     }
   }, [currentSessionId, handleNewSession]);
 
-  const handleRenameSession = useCallback((id: string, newName: string) => {
-    renameHistorySession(id, newName);
-    setSessions(getHistorySessions());
+  const handleRenameSession = useCallback(async (id: string, newName: string) => {
+    await renameHistorySession(id, newName);
+    const updatedSessions = await getHistorySessions();
+    setSessions(updatedSessions);
     if (currentSessionId === id) {
       setQuery(newName);
     }
@@ -571,8 +417,9 @@ const SearchView: React.FC = () => {
   }, [showToast]);
 
   useEffect(() => {
+    const activeRequests = activeRequestRef.current;
     return () => {
-      Object.values(activeRequestRef.current).forEach(controller => {
+      Object.values(activeRequests).forEach(controller => {
         if (controller) {
           controller.abort();
         }
@@ -1044,6 +891,12 @@ const SearchView: React.FC = () => {
         showExport={!!searchResult}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
+        onLoginClick={() => setIsAuthModalOpen(true)}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
 
       <div className={`flex-1 relative h-full flex flex-col overflow-hidden bg-[#0A0A0A] transition-all duration-300`}>

@@ -1,4 +1,5 @@
 import { Node, Edge } from 'reactflow';
+import api from './api';
 
 export interface ConversationMessage {
     user?: string;
@@ -23,62 +24,65 @@ export interface HistorySession extends RabbitHoleExport {
 
 const HISTORY_KEY = 'rabbitholes_history';
 
-export const getHistorySessions = (): HistorySession[] => {
+const getToken = () => localStorage.getItem('auth_token');
+
+export const getHistorySessions = async (): Promise<HistorySession[]> => {
     try {
-        const data = localStorage.getItem(HISTORY_KEY);
-        if (!data) return [];
-        const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed.sort((a, b) => b.timestamp - a.timestamp) : [];
+        const token = getToken();
+        if (token) {
+            const response = await api.get('/history', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return response.data || [];
+        } else {
+            // Do not use localStorage, return empty if not logged in
+            return [];
+        }
     } catch (error) {
         console.error('Failed to parse history sessions', error);
         return [];
     }
 };
 
-export const saveHistorySession = (session: HistorySession): void => {
+export const saveHistorySession = async (session: HistorySession): Promise<HistorySession | void> => {
     try {
-        const sessions = getHistorySessions();
-        const existingIndex = sessions.findIndex(s => s.id === session.id);
-
-        if (existingIndex >= 0) {
-            sessions[existingIndex] = session;
-        } else {
-            sessions.push(session);
-        }
-
-        // Quick validation before saving
         if (!session.query) {
-            // If the node has only loading or no labels, we might extract something, but fallback
             session.query = 'Untitled Journey';
         }
 
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(sessions));
-    } catch (error) {
-        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-            console.warn('LocalStorage quota exceeded. Try deleting old sessions.');
-        } else {
-            console.error('Failed to save history session', error);
+        const token = getToken();
+        if (token) {
+            await api.post('/history', session, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return session;
         }
+        // If not logged in, we do not auto-save history
+    } catch (error) {
+        console.error('Failed to save history session', error);
     }
 };
 
-export const deleteHistorySession = (id: string): void => {
+export const deleteHistorySession = async (id: string): Promise<void> => {
     try {
-        const sessions = getHistorySessions();
-        const updated = sessions.filter(s => s.id !== id);
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+        const token = getToken();
+        if (token) {
+            await api.delete(`/history/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        }
     } catch (error) {
         console.error('Failed to delete history session', error);
     }
 };
 
-export const renameHistorySession = (id: string, newName: string): void => {
+export const renameHistorySession = async (id: string, newName: string): Promise<void> => {
     try {
-        const sessions = getHistorySessions();
-        const existingIndex = sessions.findIndex(s => s.id === id);
-        if (existingIndex >= 0) {
-            sessions[existingIndex].query = newName;
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(sessions));
+        const token = getToken();
+        if (token) {
+            await api.put(`/history/${id}`, { newName }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
         }
     } catch (error) {
         console.error('Failed to rename history session', error);

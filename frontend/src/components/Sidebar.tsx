@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { HistorySession } from '../services/history';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
     sessions: HistorySession[];
@@ -13,6 +14,7 @@ interface SidebarProps {
     showExport: boolean;
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
+    onLoginClick?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -26,8 +28,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onExportClick,
     showExport,
     isOpen,
-    setIsOpen
+    setIsOpen,
+    onLoginClick
 }) => {
+    const { user, logout } = useAuth();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
     const editInputRef = useRef<HTMLInputElement>(null);
@@ -178,6 +182,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </svg>
                         Export JSON
                     </button>
+
+                    {/* Auth Section */}
+                    {user ? (
+                        <div className="mt-2 pt-2 border-t border-[#222]">
+                            <div className="px-3 py-2 text-xs text-white/40 truncate">
+                                {user.email}
+                            </div>
+                            <button
+                                onClick={logout}
+                                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-red-500/10 text-white/60 hover:text-red-400 transition-all duration-200 text-sm font-light"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Log out
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="mt-2 pt-2 border-t border-[#222]">
+                            <button
+                                onClick={onLoginClick}
+                                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-[#111111] text-white/60 hover:text-white transition-all duration-200 text-sm font-light"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Log in / Register
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </>

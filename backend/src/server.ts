@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { setupRabbitHoleRoutes } from './routes/rabbithole';
+import { setupAuthRoutes } from './routes/auth';
+import setupHistoryRoutes from './routes/history';
+import { getDB } from './db/database';
 
 dotenv.config();
 
@@ -11,8 +14,8 @@ const port = process.env.PORT || 3000;
 
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
@@ -22,6 +25,8 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api', setupRabbitHoleRoutes(null));
+app.use('/api/auth', setupAuthRoutes());
+app.use('/api/history', setupHistoryRoutes()); // Mounted history routes
 
 // Serve static files from the React frontend app
 app.use(express.static(path.join(__dirname, '../../frontend/build')));
@@ -36,6 +41,11 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Something broke!' });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+getDB().then(() => {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}).catch(err => {
+  console.error("Failed to initialize database", err);
+  process.exit(1);
 }); 
