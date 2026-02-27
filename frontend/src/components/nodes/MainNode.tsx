@@ -14,6 +14,7 @@ interface MainNodeData {
     thumbnail?: string;
   }>;
   onAskFollowUp?: () => void;
+  onDeleteNode?: () => void;
 }
 
 const getFaviconUrl = (url: string): string => {
@@ -35,8 +36,25 @@ const transformStyles = [
 
 const MainNode = ({ data }: NodeProps<MainNodeData>) => {
   return (
-    <div className="relative bg-[#1a1a1a] rounded-lg border border-black shadow-lg min-h-[500px] max-h-[550px] flex flex-col">
+    <div className="relative bg-[#1a1a1a] rounded-lg border border-black shadow-lg min-h-[500px] max-h-[550px] flex flex-col group">
       <Handle type="target" position={Position.Left} className="w-2 h-2" />
+
+      {/* Delete Button */}
+      {data.onDeleteNode && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            data.onDeleteNode!();
+          }}
+          className="absolute top-4 right-4 z-50 p-2 rounded-lg bg-black/40 text-white/40 hover:text-red-400 hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200"
+          title="Delete Node"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      )}
+
       {data.images && data.images.length > 0 && (
         <div className="flex-none bg-[#1a1a1a] p-6">
           <BounceCards

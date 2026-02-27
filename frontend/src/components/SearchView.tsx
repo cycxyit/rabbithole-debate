@@ -6,6 +6,7 @@ import dagre from 'dagre';
 import gsap from 'gsap';
 import RabbitFlow from './RabbitFlow';
 import MainNode from './nodes/MainNode';
+import QuestionNode from './nodes/QuestionNode';
 import CustomBranchInput from './CustomBranchInput';
 import '../styles/search.css';
 import { searchRabbitHole } from '../services/api';
@@ -261,12 +262,40 @@ const SearchView: React.FC = () => {
     setSessions(getHistorySessions());
   }, []);
 
-  // Stable ref holding the modal-open callback so nodeTypes useMemo never re-creates
   const onAskFollowUpRef = useRef<(nodeId: string) => void>(() => { });
   onAskFollowUpRef.current = (nodeId: string) => {
     setSelectedSourceNodeId(nodeId);
     setFollowUpInput('');
     setShowFollowUpModal(true);
+  };
+
+  const onDeleteNodeRef = useRef<(nodeId: string) => void>(() => { });
+  onDeleteNodeRef.current = (nodeId: string) => {
+    // Collect all descendants (including the node itself) to remove
+    const getDescendants = (id: string, currentEdges: Edge[]): string[] => {
+      const children = currentEdges.filter(e => e.source === id).map(e => e.target);
+      return [id, ...children.flatMap(childId => getDescendants(childId, currentEdges))];
+    };
+
+    const nodesToRemove = getDescendants(nodeId, edgesRef.current);
+
+    const updatedNodes = nodesRef.current.filter(n => !nodesToRemove.includes(n.id));
+    const updatedEdges = edgesRef.current.filter(e =>
+      !nodesToRemove.includes(e.source) && !nodesToRemove.includes(e.target)
+    );
+
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(updatedNodes, updatedEdges);
+
+    nodesRef.current = layoutedNodes;
+    edgesRef.current = layoutedEdges;
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+
+    // After deleting nodes, if there are no main nodes left, reset to new session
+    const hasMainNode = layoutedNodes.some(n => n.type === 'mainNode');
+    if (!hasMainNode) {
+      setSearchResult(null);
+    }
   };
 
   // nodeTypes is memoized once; MainNode receives a stable wrapper that reads the latest ref
@@ -276,7 +305,17 @@ const SearchView: React.FC = () => {
         {...props}
         data={{
           ...props.data,
-          onAskFollowUp: () => onAskFollowUpRef.current(props.id)
+          onAskFollowUp: () => onAskFollowUpRef.current(props.id),
+          onDeleteNode: () => onDeleteNodeRef.current(props.id)
+        }}
+      />
+    ),
+    questionNode: (props: React.ComponentProps<typeof QuestionNode>) => (
+      <QuestionNode
+        {...props}
+        data={{
+          ...props.data,
+          onDeleteNode: () => onDeleteNodeRef.current(props.id)
         }}
       />
     )
@@ -325,7 +364,7 @@ const SearchView: React.FC = () => {
     const uniqueId = `question-custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newNode: Node = {
       id: uniqueId,
-      type: 'default',
+      type: 'questionNode',
       data: {
         label: question,
         isExpanded: false,
@@ -334,18 +373,7 @@ const SearchView: React.FC = () => {
         sources: [],
         isCustom: true
       },
-      position: { x: 0, y: 0 },
-      style: {
-        width: questionNodeWidth,
-        background: '#1a1a1a',
-        color: '#fff',
-        border: '1px solid #5a4020',
-        borderRadius: '8px',
-        fontSize: '14px',
-        textAlign: 'left',
-        boxShadow: '0 4px 6px -1px rgba(90, 64, 32, 0.3)',
-        cursor: 'pointer'
-      }
+      position: { x: 0, y: 0 }
     };
     const newEdge: Edge = {
       id: `edge-${uniqueId}`,
@@ -789,7 +817,7 @@ const SearchView: React.FC = () => {
         const isCustom = index >= response.followUpQuestions.length;
         return {
           id: `question-${index}`,
-          type: 'default',
+          type: 'questionNode',
           data: {
             label: question,
             isExpanded: false,
@@ -798,20 +826,7 @@ const SearchView: React.FC = () => {
             sources: [],
             isCustom
           },
-          position: { x: 0, y: 0 },
-          style: {
-            width: questionNodeWidth,
-            background: '#1a1a1a',
-            color: '#fff',
-            border: isCustom ? '1px solid #5a4020' : '1px solid #333',
-            borderRadius: '8px',
-            fontSize: '14px',
-            textAlign: 'left',
-            boxShadow: isCustom
-              ? '0 4px 6px -1px rgba(90, 64, 32, 0.2)'
-              : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            cursor: 'pointer'
-          }
+          position: { x: 0, y: 0 }
         };
       });
 
