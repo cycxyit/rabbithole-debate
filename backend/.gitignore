@@ -32,3 +32,6 @@ coverage/
 
 # Production build
 build/ 
+
+# data
+data/
