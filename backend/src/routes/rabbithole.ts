@@ -33,7 +33,14 @@ interface SearchResponse {
 
 export function setupRabbitHoleRoutes(_runtime: any) {
     const router = express.Router();
-    const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY });
+
+    // Attempt to load multiple keys from TAVILY_API_KEYS or fallback to the single TAVILY_API_KEY.
+    const rawTavilyKeys = process.env.TAVILY_API_KEYS || process.env.TAVILY_API_KEY || "";
+    const tavilyKeys = rawTavilyKeys.split(",").map(k => k.trim()).filter(k => k);
+
+    if (tavilyKeys.length === 0) {
+        console.warn("[WARNING] No Tavily API keys found in environment variables. Searching will fail.");
+    }
 
     router.post("/rabbitholes/search", async (req: express.Request, res: express.Response) => {
         try {
@@ -43,6 +50,17 @@ export function setupRabbitHoleRoutes(_runtime: any) {
                 concept,
                 followUpMode = "expansive",
             } = req.body as RabbitHoleSearchRequest;
+
+            if (tavilyKeys.length === 0) {
+                throw new Error("Tavily API Keys are not configured on the server.");
+            }
+
+            // Randomly select one Tavily API key from the pool
+            const randomTavilyKey = tavilyKeys[Math.floor(Math.random() * tavilyKeys.length)];
+            const keyPreview = randomTavilyKey.substring(0, 4) + '...' + randomTavilyKey.substring(randomTavilyKey.length - 4);
+            console.log(`[ROUTE] Using Tavily API Key: ${keyPreview} for query "${query}"`);
+
+            const tavilyClient = tavily({ apiKey: randomTavilyKey });
 
             const searchResults = await tavilyClient.search(query, {
                 searchDepth: "basic",
