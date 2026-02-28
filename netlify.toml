@@ -1,0 +1,19 @@
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "build"
+
+[[redirects]]
+  # 将发往 /api 的请求转发到你的后端服务器（比如 Railway 的地址）
+  # 部署后如果你有真实的后端地址，请将下面的 to 替换为实际地址，例如：
+  # to = "https://your-backend-app.up.railway.app/api/:splat"
+  from = "/api/*"
+  to = "http://localhost:3001/api/:splat" # 部署前需要修改这里！
+  status = 200
+  force = true
+
+[[redirects]]
+  # 确保 React 单页应用(SPA)的所有前端路由刷新时能回退到 index.html
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -28,24 +28,17 @@ app.use('/api', setupRabbitHoleRoutes(null));
 app.use('/api/auth', setupAuthRoutes());
 app.use('/api/history', setupHistoryRoutes()); // Mounted history routes
 
-// Serve static files from the React frontend app
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
+// Export the setup express app for Vercel Serverless
+export default app;
 
-// Handle any remaining requests by serving the index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
-});
-
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something broke!' });
-});
-
-getDB().then(() => {
-  app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+// Only start the server locally if we're not running on Vercel
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  getDB().then(() => {
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+  }).catch(err => {
+    console.error("Failed to initialize database", err);
+    process.exit(1);
   });
-}).catch(err => {
-  console.error("Failed to initialize database", err);
-  process.exit(1);
-}); 
+}
