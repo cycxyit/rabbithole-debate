@@ -8,7 +8,8 @@ let db: Database | null = null;
 export async function initDB(): Promise<Database> {
     if (db) return db;
 
-    const dataPath = path.join(process.cwd(), 'data');
+    // [CRITICAL] Vercel's filesystem is read-only. We MUST use /tmp to avoid 500 Internal Server Error during registration.
+    const dataPath = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
     if (!fs.existsSync(dataPath)) {
         fs.mkdirSync(dataPath, { recursive: true });
     }

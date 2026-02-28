@@ -6,8 +6,8 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 export default function setupHistoryRoutes() {
     const router = express.Router();
 
-    // Ensure the base history directory exists
-    const HISTORY_DIR = path.join(process.cwd(), 'data', 'historyData');
+    // [CRITICAL] Vercel's filesystem is read-only. We MUST use /tmp to avoid 500 Internal Server Error when saving history.
+    const HISTORY_DIR = process.env.VERCEL ? '/tmp/historyData' : path.join(process.cwd(), 'data', 'historyData');
     fs.mkdir(HISTORY_DIR, { recursive: true }).then(async () => {
         // Migration: move existing files from userId subdirectories to the root HISTORY_DIR
         try {
