@@ -22,7 +22,6 @@ export interface HistorySession extends RabbitHoleExport {
     timestamp: number;
 }
 
-const HISTORY_KEY = 'rabbitholes_history';
 
 const getToken = () => localStorage.getItem('auth_token');
 

@@ -5,9 +5,6 @@ import App from './App';
 import posthog from './posthog';
 import { PostHogProvider } from 'posthog-js/react';
 
-const options = {
-  api_host: process.env.REACT_APP_PUBLIC_POSTHOG_HOST,
-};
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

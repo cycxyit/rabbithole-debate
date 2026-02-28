@@ -3,13 +3,8 @@ import ReactFlow, {
   Node,
   Edge,
   NodeTypes,
-  OnNodesChange,
-  OnEdgesChange,
-  OnConnect,
-  Connection,
   useNodesState,
   useEdgesState,
-  Panel,
   Controls,
   Background,
   BackgroundVariant,
@@ -100,10 +95,10 @@ const RabbitFlow: React.FC<RabbitFlowProps> = ({
     );
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [initialNodes, initialEdges]);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   const onConnect = useCallback(
-    (params: Connection) =>
+    (params: any) =>
       setEdges((eds) =>
         addEdge(
           {
