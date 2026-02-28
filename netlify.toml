@@ -8,7 +8,7 @@
   # 部署后如果你有真实的后端地址，请将下面的 to 替换为实际地址，例如：
   # to = "https://your-backend-app.up.railway.app/api/:splat"
   from = "/api/*"
-  to = "http://localhost:3001/api/:splat" # 部署前需要修改这里！
+  to = "https://rabbithole-debate-backend.vercel.app/api/:splat" # 已更新为Vercel地址
   status = 200
   force = true
 
